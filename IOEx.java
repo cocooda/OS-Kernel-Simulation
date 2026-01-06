@@ -1,11 +1,12 @@
 import java.util.concurrent.BlockingQueue;
 
-public class IOThread implements Runnable {
+public class IOEx implements Runnable {
 
     private final BlockingQueue<PCB> ioQueue;
     private final BlockingQueue<PCB> readyQueue;
 
-    public IOThread(BlockingQueue<PCB> ioQueue,
+    // IO driver doing I/O task
+    public IOEx(BlockingQueue<PCB> ioQueue,
                     BlockingQueue<PCB> readyQueue) {
         this.ioQueue = ioQueue;
         this.readyQueue = readyQueue;
@@ -21,7 +22,7 @@ public class IOThread implements Runnable {
                 System.out.println("[IO] PID " + pcb.pid + " handling " + instr.type);
 
                 Thread.sleep(instr.duration * 300L);
-
+                // I,O Event execution using the IO driver (not the CPU)
                 pcb.pc++;
                 pcb.priority = Math.max(0, pcb.priority - 1);
                 pcb.state = ProcessState.READY;

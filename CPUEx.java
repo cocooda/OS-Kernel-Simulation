@@ -1,12 +1,12 @@
 import java.util.concurrent.BlockingQueue;
 
-public class CPUThread implements Runnable {
+public class CPUEx implements Runnable {
 
-    private final BlockingQueue<PCB> cpuQueue;
-    private final BlockingQueue<PCB> readyQueue;
-    private final BlockingQueue<PCB> ioQueue;
+    private final BlockingQueue<PCB> cpuQueue; // Running process
+    private final BlockingQueue<PCB> readyQueue; // RAM for ready
+    private final BlockingQueue<PCB> ioQueue; // Blocked by IO
 
-    public CPUThread(BlockingQueue<PCB> cpuQueue,
+    public CPUEx(BlockingQueue<PCB> cpuQueue, // pass by reference
                      BlockingQueue<PCB> readyQueue,
                      BlockingQueue<PCB> ioQueue) {
         this.cpuQueue = cpuQueue;
@@ -17,7 +17,7 @@ public class CPUThread implements Runnable {
     @Override
     public void run() {
         try {
-            while (true) {
+            while (true) { // adding the logic for handling the process
                 PCB pcb = cpuQueue.take();
                 pcb.state = ProcessState.RUNNING;
 
@@ -31,12 +31,12 @@ public class CPUThread implements Runnable {
                 System.out.println("[CPU] PID " + pcb.pid + " executing " + instr.type);
 
                 if (instr.type == InstructionType.CPU_COMPUTE) {
-                    Thread.sleep(instr.duration * 200L);
+                    Thread.sleep(instr.duration * 200L); // Purpose show the CPU is busy
                     pcb.pc++;
                     pcb.state = ProcessState.READY;
                     readyQueue.put(pcb);
                 } else {
-                    pcb.state = ProcessState.BLOCKED;
+                    pcb.state = ProcessState.BLOCKED; // this is IO - push IO queue for IO driver
                     ioQueue.put(pcb);
                 }
             }
