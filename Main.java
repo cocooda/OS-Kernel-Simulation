@@ -40,9 +40,23 @@ public class Main {
                     useCasePriorityBoostOnIO(kernel);
                 }
                 case 5 -> {
-                    useCaseTwoKernels();
-                    continue; // kernel threads managed internally
+                    Kernel[] kernels = useCaseTwoKernels();
+
+                    System.out.println("\nPress ENTER to stop both kernels...");
+                    sc.nextLine();
+
+                    for (Kernel k : kernels) {
+                        k.stop();
+                    }
+
+                    for (Kernel k : kernels) {
+                        k.joinAll();
+                    }
+
+                    System.out.println("Both kernels stopped. Returning to menu...");
+                    continue;
                 }
+
                 case 6 -> {
                     kernel.enablePriorityScheduling(true);
                     setupSuspendDemo(kernel);
@@ -98,22 +112,22 @@ public class Main {
         kernel.admitProcess(new PCB(program, 10));
     }
 
-    private static void useCaseTwoKernels() throws Exception {
+    private static Kernel[] useCaseTwoKernels() throws Exception {
         Kernel kernel1 = new Kernel();
         Kernel kernel2 = new Kernel();
 
         kernel1.admitProcess(new PCB(simpleProgram(), 3));
         kernel2.admitProcess(new PCB(simpleProgram(), 3));
 
-        new Thread(kernel1::start, "Kernel-1").start();
-        new Thread(kernel2::start, "Kernel-2").start();
+        Thread t1 = new Thread(kernel1::start, "Kernel-1");
+        Thread t2 = new Thread(kernel2::start, "Kernel-2");
 
-        System.out.println(
-        "This demo runs two kernels concurrently.\n" +
-        "They cannot be stopped from the menu.\n" +
-        "Restart the program to stop them."
-        );
+        t1.start();
+        t2.start();
+
+        return new Kernel[]{kernel1, kernel2};
     }
+
 
     private static void setupSuspendDemo(Kernel kernel) throws Exception {
         ProgramCode longCpu = new ProgramCode(List.of(

@@ -3,12 +3,12 @@ import java.util.concurrent.BlockingQueue;
 public class CPUEx implements Runnable {
 
     private final BlockingQueue<PCB> cpuQueue;
-    private final Kernel kernel;
+    private final KernelAPI kernel;
 
     // One instruction = one time quantum
     private static final long CPU_UNIT = 200L;
 
-    public CPUEx(BlockingQueue<PCB> cpuQueue, Kernel kernel) {
+    public CPUEx(BlockingQueue<PCB> cpuQueue, KernelAPI kernel) {
         this.cpuQueue = cpuQueue;
         this.kernel = kernel;
     }
@@ -35,7 +35,7 @@ public class CPUEx implements Runnable {
                     pcb.pc++;
 
                     pcb.state = ProcessState.READY;
-                    kernel.readyQueue.put(pcb); // return to scheduler
+                    kernel.getReadyQueue().put(pcb); // return to scheduler
 
                 } else {
                     // I/O request → kernel decides BLOCKED vs BLOCKED_SUSPENDED

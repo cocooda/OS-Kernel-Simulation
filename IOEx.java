@@ -3,11 +3,11 @@ import java.util.concurrent.BlockingQueue;
 public class IOEx implements Runnable {
 
     private final BlockingQueue<PCB> ioQueue;
-    private final Kernel kernel;
+    private final KernelAPI kernel;
 
     private static final long IO_UNIT = 300L;
 
-    public IOEx(BlockingQueue<PCB> ioQueue, Kernel kernel) {
+    public IOEx(BlockingQueue<PCB> ioQueue, KernelAPI kernel) {
         this.ioQueue = ioQueue;
         this.kernel = kernel;
     }

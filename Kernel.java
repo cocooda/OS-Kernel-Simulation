@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class Kernel {
+public class Kernel implements KernelAPI {
 
     // ====== RAM-RESIDENT QUEUES ======
     public final BlockingQueue<PCB> readyQueue = new LinkedBlockingQueue<>();
@@ -109,6 +109,7 @@ public class Kernel {
     }
 
     // ====== BLOCKED SUSPENSION HOOK ======
+    @Override
     public void handleBlocked(PCB pcb) {
         if (!ramHasSpace()) {
             pcb.state = ProcessState.BLOCKED_SUSPENDED;
@@ -121,6 +122,7 @@ public class Kernel {
     }
 
     // ====== IO COMPLETION ======
+    @Override
     public void handleIOCompletion(PCB pcb) throws InterruptedException {
         if (pcb.state == ProcessState.BLOCKED_SUSPENDED) {
             pcb.state = ProcessState.READY_SUSPENDED;
@@ -132,4 +134,16 @@ public class Kernel {
             readyQueue.put(pcb);
         }
     }
+
+    @Override
+    public BlockingQueue<PCB> getReadyQueue() {
+        return readyQueue;
+    }
+
+
+    public void joinAll() throws InterruptedException {
+        if (cpuThread != null) cpuThread.join();
+        if (ioThread != null) ioThread.join();
+    }
+
 }
