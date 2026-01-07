@@ -1,0 +1,21 @@
+print("Reading numbers from file and summing the number")
+read("src/read_in.txt")
+parse
+sum = 0
+a = value[0]
+print(a)
+b = value[1]
+print(b)
+c = value[2]
+print(c)
+d = value[3]
+print(d)
+sum = sum + a
+print(sum)
+sum = sum + b
+print(sum)
+sum = sum + c
+print(sum)
+sum = sum +d 
+print(sum)
+write("src/out.txt")
