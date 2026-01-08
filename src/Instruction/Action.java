@@ -143,10 +143,10 @@ class PrintValueAct implements Action {
     }
 }
 
-class WriteResultAct implements Action {
+class WriteFileAct implements Action {
     private final Path path;
 
-    public WriteResultAct(String filename) {
+    public WriteFileAct(String filename) {
         this.path = Path.of(filename);
     }
 
@@ -213,29 +213,29 @@ class ReadFileAct implements Action {
     }
 }
 
-class WriteFileAct implements Action {
+// class WriteFileAct implements Action {
 
-    private final Path path;
-    private final String content;
+//     private final Path path;
+//     private final String content;
 
-    public WriteFileAct(String filename, String content) {
-        this.path = Path.of(filename);
-        this.content = content;
-    }
+//     public WriteFileAct(String filename, String content) {
+//         this.path = Path.of(filename);
+//         this.content = content;
+//     }
 
-    @Override
-    public ExecutionResult execute(ProcessContext ctx) throws IOException {
-        try {
-            Files.writeString(
-            path,
-            content,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.APPEND
-            );
-            return ExecutionResult.DONE;
-        } catch (IOException e) {
-            return ExecutionResult.FAULT;
-        }
+//     @Override
+//     public ExecutionResult execute(ProcessContext ctx) throws IOException {
+//         try {
+//             Files.writeString(
+//             path,
+//             content,
+//             StandardOpenOption.CREATE,
+//             StandardOpenOption.APPEND
+//             );
+//             return ExecutionResult.DONE;
+//         } catch (IOException e) {
+//             return ExecutionResult.FAULT;
+//         }
         
-    }
-}
+//     }
+// }
