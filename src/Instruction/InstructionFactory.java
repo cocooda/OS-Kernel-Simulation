@@ -50,7 +50,7 @@ public class InstructionFactory {
             String filename = extractString(line);
             return new Instruction(
                 InstructionType.WRITE_FILE,
-                new WriteResultAct(filename)
+                new WriteFileAct(filename)
             );
         }
 
