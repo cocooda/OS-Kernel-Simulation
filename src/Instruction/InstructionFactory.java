@@ -107,7 +107,7 @@ public class InstructionFactory {
             String filename = extractString(line);
             return new Instruction(
                 InstructionType.WRITE_FILE,
-                new WriteFileAct(filename, writeContent)
+                new WriteFileAct(filename)
             );
         }
         return fromLine(line, ctx);
