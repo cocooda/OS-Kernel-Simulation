@@ -35,3 +35,44 @@
 - `src/Kernel/Kernel.java`: scheduler polls READY with a timeout to allow auto-stop, tracks active processes, defines priority aging and behavior-based reclassification, and updates priority semantics so larger values mean higher priority.
 - `src/Execution/IOEx.java`: documents I/O sleep as device latency and suppresses the busy-wait lint warning.
 - `src/Main.java`: removes the busy-wait loop; main now just joins the kernel thread since the kernel self-stops.
+
+Priority assignment logic (conceptual):
+```
+initialize_process(proc):
+    proc.priority           = 5
+    proc.cpu_ticks          = 0
+    proc.wait_ticks         = 0
+    proc.io_ratio           = 0.0
+    proc.ready_wait_steps   = 0
+    proc.reclassify_counter = 0
+
+on scheduling_event(proc, state):
+    if state == RUNNING:
+        proc.cpu_ticks += 1
+        proc.ready_wait_steps = 0
+        proc.reclassify_counter += 1
+    else if state == BLOCKED:
+        proc.wait_ticks += 1
+        proc.ready_wait_steps = 0
+        proc.reclassify_counter += 1
+    else if state == READY:
+        proc.ready_wait_steps += 1
+
+    # Priority aging (starvation prevention)
+    if proc.ready_wait_steps >= 10:
+        proc.priority = min(proc.priority + 1, MAX_PRIORITY)
+        proc.ready_wait_steps = 0
+
+    # Behavior-based reclassification (every N = 4 slices)
+    if proc.reclassify_counter >= 4:
+        total = proc.cpu_ticks + proc.wait_ticks
+        if total > 0:
+            proc.io_ratio = proc.wait_ticks / total
+            if proc.io_ratio > 0.6:
+                proc.priority = min(proc.priority + 1, MAX_PRIORITY)
+            else if proc.io_ratio < 0.4:
+                proc.priority = max(proc.priority - 1, MIN_PRIORITY)
+        proc.cpu_ticks  = 0
+        proc.wait_ticks = 0
+        proc.reclassify_counter = 0
+```
