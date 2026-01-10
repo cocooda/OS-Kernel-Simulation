@@ -36,7 +36,7 @@
 - `src/Execution/IOEx.java`: documents I/O sleep as device latency and suppresses the busy-wait lint warning.
 - `src/Main.java`: removes the busy-wait loop; main now just joins the kernel thread since the kernel self-stops.
 
-Priority assignment logic (conceptual):
+Process Priority assignment logic (conceptual) - implement with `onSchedulingEvent` in `src/Kernel/Kernel.java` :
 ```
 initialize_process(proc):
     proc.priority           = 5
