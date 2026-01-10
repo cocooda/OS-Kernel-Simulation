@@ -1,10 +1,10 @@
 package Instruction;
 
+import Process.ProcessContext;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.io.IOException;
 import java.nio.file.StandardOpenOption;
-import Process.ProcessContext;
 @FunctionalInterface
 public interface Action {
     ExecutionResult execute(ProcessContext ctx) throws Exception;
@@ -203,7 +203,7 @@ class ReadFileAct implements Action {
     public ExecutionResult execute(ProcessContext ctx) {
         try {
             String content = Files.readString(path);
-            System.out.println("Read file:\n" + content);
+            // System.out.println("Read file:\n" + content);
             ctx.setPath(this.path);
             ctx.setContent(content);
             return ExecutionResult.DONE;

@@ -1,31 +1,48 @@
 import Kernel.Kernel;
 import Process.PCB;
 import Process.ProcessContext;
-import Process.ProcessState;
 import Program.ProgramCode;
 
 public class Main {
-    public static void main(String args[]) {
+ 
+    public static PCB createProcessByFile(String filename) throws Exception{
+        ProcessContext ctx = new ProcessContext();
         try {
-            ProcessContext ctx = new ProcessContext();
-            ProgramCode program = ProgramCode.fromScript(java.nio.file.Path.of("src/script2.txt"), ctx);
+            ProgramCode program = ProgramCode.fromScript(java.nio.file.Path.of(filename), ctx);
+            PCB pcb = new PCB(program, ctx);
+            return pcb;
+        } catch (Exception e) {
+            System.out.println("Fail to yeild process");
+            return null;
+        }
+    };  
 
+    public static void playgroundWith2Processes() {
+        try {
+            
             Kernel kernel = new Kernel();
-            PCB pcb = new PCB(program, 3);
+            PCB pcb = createProcessByFile("src/script2.txt");
+            PCB pcb2 = createProcessByFile("src/script.txt");
+            // activate the priority scheduling
+            boolean enable = true;
+            kernel.enablePriorityScheduling(enable);
             kernel.admitProcess(pcb);
+            kernel.admitProcess(pcb2);
 
             Thread kernelThread = new Thread(kernel::start, "Kernel");
+            System.out.println("Start the Simmulation");
+
             kernelThread.start();
 
-            while (pcb.state != ProcessState.TERMINATED) {
-                Thread.sleep(50);
-            }
-
-            kernel.stop();
             kernelThread.join();
+            System.out.println("Simmulation Endded");
         } catch (Exception e) {
             e.printStackTrace();
         }
        
     };
+
+    public static void main(String[] args) {
+        playgroundWith2Processes();
+    }
 }

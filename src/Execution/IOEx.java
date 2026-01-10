@@ -1,9 +1,9 @@
 package Execution;
 
-import java.util.concurrent.BlockingQueue;
 import Instruction.Instruction;
 import Kernel.Kernel;
 import Process.PCB;
+import java.util.concurrent.BlockingQueue;
 
 public class IOEx implements Runnable {
 
@@ -19,6 +19,7 @@ public class IOEx implements Runnable {
     }
 
     @Override
+    @SuppressWarnings("BusyWait")
     public void run() {
         try {
             while (true) {
@@ -33,12 +34,12 @@ public class IOEx implements Runnable {
                 long end = System.nanoTime();
                 int osTimeUnits = mapToOSTime(end - start);
 
-                Thread.sleep(osTimeUnits * IO_UNIT);
+                Thread.sleep(osTimeUnits * IO_UNIT);  // Add the sleep for simmulating the latency between the memory (disk) & the CPU
 
                 pcb.pc++;
 
                 // Adaptive priority boost after I/O
-                pcb.priority = Math.max(0, pcb.priority - 1);
+                pcb.priority = pcb.priority + 1;
 
                 kernel.handleIOCompletion(pcb);
             }

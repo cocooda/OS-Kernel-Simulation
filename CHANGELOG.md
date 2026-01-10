@@ -29,3 +29,9 @@
   write("src/out.txt")
   ```
 - CPUEx: runs `Instruction` instances from `ProgramCode` as part of the kernel execution path.
+
+## 2026-01-10
+- `src/Execution/CPUEx.java`: time-sharing uses a 20ms slice and can execute multiple CPU instructions per slice before preemption; termination now reports through the kernel.
+- `src/Kernel/Kernel.java`: scheduler polls READY with a timeout to allow auto-stop, tracks active processes, defines priority aging and behavior-based reclassification, and updates priority semantics so larger values mean higher priority.
+- `src/Execution/IOEx.java`: documents I/O sleep as device latency and suppresses the busy-wait lint warning.
+- `src/Main.java`: removes the busy-wait loop; main now just joins the kernel thread since the kernel self-stops.
