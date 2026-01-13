@@ -1,0 +1,6 @@
+print("what is 1 + 1 = ?")
+sum = 0
+a = 1
+b = 1
+sum = a + b
+print(sum)

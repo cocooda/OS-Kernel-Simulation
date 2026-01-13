@@ -1,5 +1,7 @@
 import java.util.concurrent.BlockingQueue;
 
+import Kernel.KernelAPI;
+
 public class CPUEx implements Runnable {
 
     private final BlockingQueue<PCB> cpuQueue;
