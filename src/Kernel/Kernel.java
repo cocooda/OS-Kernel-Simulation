@@ -21,11 +21,6 @@ public class Kernel implements KernelAPI {
     private final List<PCB> readySuspendedQueue   = new ArrayList<>();
     private final List<PCB> blockedSuspendedQueue = new ArrayList<>();
 
-    // ====== CORE KERNEL LOOP ======
-    private Thread kernelThread;
-    private Thread cpuThread;
-    private Thread ioThread;
-
     // ====== THREADS ======
     private Thread kernelThread;
     private Thread cpuThread;
@@ -45,11 +40,6 @@ public class Kernel implements KernelAPI {
 
     public void enablePriorityScheduling(boolean enable) {
         this.priorityScheduling = enable;
-    }
-
-    @Override
-    public BlockingQueue<PCB> getReadyQueue() {
-        return readyQueue;
     }
 
     private boolean ramHasSpace() {
@@ -141,7 +131,7 @@ public class Kernel implements KernelAPI {
         System.out.println("[KERNEL] Scheduler stopped");
     }
 
-    // ====== CORE LOGIC (DAVE'S REFINEMENTS) ======
+    // ====== Priority Management ======
 
     private PCB findLowerPriorityVictim(int incomingPriority) {
         for (PCB pcb : readyQueue) {
@@ -192,11 +182,12 @@ public class Kernel implements KernelAPI {
     }
 
 
+    @Override
     public void handleTermination(PCB pcb) {
         if (pcb.state != ProcessState.TERMINATED) {
             pcb.state = ProcessState.TERMINATED;
+            activeProcessCount.decrementAndGet();
         }
-        activeProcessCount.decrementAndGet();
     }
 
     private void onSchedulingEvent(PCB pcb, ProcessState state) {
