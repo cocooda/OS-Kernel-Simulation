@@ -44,6 +44,7 @@ public class CPUEx implements Runnable {
                             " executing " + instr.type);
 
                     if (instr.type == InstructionType.CPU_COMPUTE) {
+                        kernel.onSchedulingEvent(pcb, ProcessState.RUNNING);
                         long start = System.nanoTime();
                         instr.action.execute(pcb.ctx);
                         long end = System.nanoTime();
@@ -67,6 +68,7 @@ public class CPUEx implements Runnable {
 
                 if (preempted) {
                     pcb.state = ProcessState.READY;
+                    kernel.onSchedulingEvent(pcb, ProcessState.READY);
                     kernel.getReadyQueue().put(pcb); // return to scheduler
                 }
             }

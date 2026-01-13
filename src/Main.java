@@ -42,6 +42,37 @@ public class Main {
        
     };
 
+    public static void playgroundWith3Processes() {
+    try {
+        Kernel kernel = new Kernel();
+
+        // Create 3 independent processes (3 programs)
+        PCB pcb1 = createProcessByFile("src/script.txt");
+        PCB pcb2 = createProcessByFile("src/script2.txt");
+        PCB pcb3 = createProcessByFile("src/script3.txt");
+
+        // Enable priority scheduling
+        kernel.enablePriorityScheduling(true);
+
+        // Admit processes to the kernel
+        kernel.admitProcess(pcb1);
+        kernel.admitProcess(pcb2);
+        kernel.admitProcess(pcb3);
+
+        // Start kernel (scheduler + CPU + IO threads)
+        Thread kernelThread = new Thread(kernel::start, "Kernel");
+        System.out.println("Start the Simulation (3 Processes)");
+
+        kernelThread.start();
+        kernelThread.join();
+
+        System.out.println("Simulation Ended");
+    } catch (Exception e) {
+        e.printStackTrace();    
+    }
+}
+
+
     public static void main(String[] args) {
         playgroundWith2Processes();
     }

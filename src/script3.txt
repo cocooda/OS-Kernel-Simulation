@@ -1,0 +1,7 @@
+print("Process 3 starting")
+read("src/read_in.txt")
+parse
+x = value[0]
+print(x)
+read("src/read_in.txt")
+print("Process 3 finished")

@@ -14,8 +14,11 @@ public class Kernel implements KernelAPI {
 
     // ====== RAM-RESIDENT QUEUES ======
     public final BlockingQueue<PCB> readyQueue = new LinkedBlockingQueue<>();
-    public final BlockingQueue<PCB> cpuQueue   = new LinkedBlockingQueue<>();
-    public final BlockingQueue<PCB> ioQueue    = new LinkedBlockingQueue<>();
+    private final List<PCB> blockedQueue          = new ArrayList<>();
+
+    // ===== EXECUTION QUEUES (MECHANISM ONLY) =====
+    private final BlockingQueue<PCB> cpuQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<PCB> ioQueue  = new LinkedBlockingQueue<>();
 
     // ====== SUSPENDED (DISK) QUEUES ======
     private final List<PCB> readySuspendedQueue   = new ArrayList<>();
@@ -26,16 +29,17 @@ public class Kernel implements KernelAPI {
     private Thread cpuThread;
     private Thread ioThread;
 
-    // ====== DAVE'S CONFIG & LOGIC CONSTANTS ======
+    // ====== CONFIG & LOGIC CONSTANTS ======
     private boolean priorityScheduling = false;
-    private static final int MAX_READY_IN_RAM = 3;
+    private static final int MAX_RAM_PROCESSES = 2;
     private static final int MAX_PRIORITY = 10;
     private static final int MIN_PRIORITY = 0;
     private static final int READY_AGING_THRESHOLD = 10;
     private static final int RECLASSIFY_SLICES = 4;
     private static final long SCHEDULER_POLL_MS = 50L;
+    private int ramResidentCount = 0; // Current number of processes in RAM
 
-    private final AtomicInteger activeProcessCount = new AtomicInteger(0);
+    private final AtomicInteger activeProcessCount = new AtomicInteger(0); // Total active processes in the system
     private volatile boolean running = true;
 
     public void enablePriorityScheduling(boolean enable) {
@@ -43,15 +47,17 @@ public class Kernel implements KernelAPI {
     }
 
     private boolean ramHasSpace() {
-        return readyQueue.size() < MAX_READY_IN_RAM;
+        return ramResidentCount < MAX_RAM_PROCESSES;
     }
 
     // ====== PROCESS LIFECYCLE ======
 
     public void admitProcess(PCB pcb) throws InterruptedException {
+        reclaimMemoryIfNeeded();
         if (ramHasSpace()) {
             pcb.state = ProcessState.READY;
             readyQueue.put(pcb);
+            ramResidentCount++;
             System.out.println("[KERNEL] Admit PID " + pcb.pid + " to READY");
         } else {
             pcb.state = ProcessState.READY_SUSPENDED;
@@ -80,26 +86,21 @@ public class Kernel implements KernelAPI {
 
         try {
             while (this.running) {
-
                 // (1) Activate suspended processes if RAM frees up
-                for (PCB pcb : readyQueue) {
-                    onSchedulingEvent(pcb, ProcessState.READY);
-                }
-                if (ramHasSpace() && !blockedSuspendedQueue.isEmpty()) {
-                    PCB pcb = blockedSuspendedQueue.remove(0);
-                    pcb.state = ProcessState.BLOCKED;
-                    System.out.println("[KERNEL] Activate PID " + pcb.pid +
-                            " (BLOCKED_SUSPENDED to BLOCKED)");
-                }
-                
-                if (ramHasSpace() && !readySuspendedQueue.isEmpty()) {
-                    PCB pcb = readySuspendedQueue.remove(0);
-                    pcb.state = ProcessState.READY;
-                    readyQueue.put(pcb);
-                    System.out.println("[KERNEL] Activate PID " + pcb.pid + " (READY_SUSPENDED to READY)");
+                if (!readySuspendedQueue.isEmpty() && !ramHasSpace()) {
+                    // make room IF we need to
+                    reclaimMemoryIfNeeded();
+
+                    if (!readySuspendedQueue.isEmpty() && ramHasSpace()) {
+                        PCB pcb = readySuspendedQueue.remove(0);
+                        pcb.state = ProcessState.READY;
+                        readyQueue.put(pcb);
+                        ramResidentCount++;
+                        System.out.println("[KERNEL] Activate PID " + pcb.pid + " (READY_SUSPENDED to READY)");
+                    }
                 }
 
-                // (2) Select next READY process
+                // (2) Schedule next READY process
                 PCB next = readyQueue.poll(SCHEDULER_POLL_MS, TimeUnit.MILLISECONDS); // Retrieve & wait for certain time range if not get any -> return null
                 if (next == null) {
                     if (shouldStop()) {
@@ -116,6 +117,7 @@ public class Kernel implements KernelAPI {
                         readyQueue.remove(victim);
                         victim.state = ProcessState.READY_SUSPENDED;
                         readySuspendedQueue.add(victim);
+                        ramResidentCount--;
                         System.out.println("[KERNEL] Suspend PID " + victim.pid +
                                 " due to higher-priority PID " + next.pid);
                     }
@@ -145,28 +147,32 @@ public class Kernel implements KernelAPI {
     // ====== BLOCKED SUSPENSION HOOK ======
     @Override
     public void handleBlocked(PCB pcb) {
-        if (!ramHasSpace()) {
-            pcb.state = ProcessState.BLOCKED_SUSPENDED;
-            blockedSuspendedQueue.add(pcb);
-            System.out.println("[KERNEL] PID " + pcb.pid + " to BLOCKED_SUSPENDED");
-            ioQueue.add(pcb);
-        } else {
-            pcb.state = ProcessState.BLOCKED;
-        }
-        onSchedulingEvent(pcb, ProcessState.BLOCKED);
+        pcb.state = ProcessState.BLOCKED;
+        blockedQueue.add(pcb);
+        ioQueue.add(pcb);
     }
+
 
     // ====== IO COMPLETION ======
     @Override
     public void handleIOCompletion(PCB pcb) throws InterruptedException {
-        if (pcb.state == ProcessState.BLOCKED_SUSPENDED) {
-            blockedSuspendedQueue.remove(pcb);
-            pcb.state = ProcessState.READY_SUSPENDED;
-            readySuspendedQueue.add(pcb);
-            System.out.println("[KERNEL] I/O done PID " + pcb.pid + " (BLOCKED_SUSPENDED to READY_SUSPENDED)");
-        } else {
+        
+        // Case 1: process was BLOCKED in RAM
+        if (blockedQueue.remove(pcb)) {
+
             pcb.state = ProcessState.READY;
             readyQueue.put(pcb);
+            System.out.println("[KERNEL] I/O done PID " + pcb.pid +
+                    " (BLOCKED to READY)");
+            return;
+            }
+
+        // Case 2: process was BLOCKED_SUSPENDED
+        if (blockedSuspendedQueue.remove(pcb)) {
+            pcb.state = ProcessState.READY_SUSPENDED;
+            readySuspendedQueue.add(pcb);
+            System.out.println("[KERNEL] I/O done PID " + pcb.pid +
+                    " (BLOCKED_SUSPENDED to READY_SUSPENDED)");
         }
     }
 
@@ -175,22 +181,20 @@ public class Kernel implements KernelAPI {
         return readyQueue;
     }
 
-
-    public void joinAll() throws InterruptedException {
-        if (cpuThread != null) cpuThread.join();
-        if (ioThread != null) ioThread.join();
-    }
-
-
     @Override
     public void handleTermination(PCB pcb) {
         if (pcb.state != ProcessState.TERMINATED) {
+            if (pcb.state != ProcessState.READY_SUSPENDED &&
+                pcb.state != ProcessState.BLOCKED_SUSPENDED) {
+                ramResidentCount--;
+            }
             pcb.state = ProcessState.TERMINATED;
             activeProcessCount.decrementAndGet();
         }
     }
 
-    private void onSchedulingEvent(PCB pcb, ProcessState state) {
+    @Override
+    public void onSchedulingEvent(PCB pcb, ProcessState state) {
         if (state == ProcessState.RUNNING) {
             pcb.cpuTicks += 1;
             pcb.readyWaitSteps = 0;
@@ -232,4 +236,16 @@ public class Kernel implements KernelAPI {
                 && readySuspendedQueue.isEmpty()
                 && blockedSuspendedQueue.isEmpty();
     }
+
+    private void reclaimMemoryIfNeeded() {
+        if (!ramHasSpace() && !blockedQueue.isEmpty()) {
+            PCB victim = blockedQueue.remove(0);
+            victim.state = ProcessState.BLOCKED_SUSPENDED;
+            blockedSuspendedQueue.add(victim);
+            ramResidentCount--;
+            System.out.println("[KERNEL] Swap out PID " + victim.pid +
+                    "to free RAM (BLOCKED to BLOCKED_SUSPENDED)");
+        }
+    }
+
 }

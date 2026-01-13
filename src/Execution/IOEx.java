@@ -3,6 +3,8 @@ package Execution;
 import Instruction.Instruction;
 import Kernel.*;
 import Process.PCB;
+import Process.ProcessState;
+
 import java.util.concurrent.BlockingQueue;
 
 public class IOEx implements Runnable {
@@ -29,17 +31,16 @@ public class IOEx implements Runnable {
                 System.out.println("[IO] PID " + pcb.pid +
                         " handling " + instr.type);
 
+                kernel.onSchedulingEvent(pcb, ProcessState.BLOCKED);
+
                 long start = System.nanoTime();
                 instr.action.execute(pcb.ctx);
                 long end = System.nanoTime();
-                int osTimeUnits = mapToOSTime(end - start);
 
+                int osTimeUnits = mapToOSTime(end - start);
                 Thread.sleep(osTimeUnits * IO_UNIT);  // Add the sleep for simmulating the latency between the memory (disk) & the CPU
 
                 pcb.pc++;
-
-                // Adaptive priority boost after I/O
-                pcb.priority = pcb.priority + 1;
 
                 kernel.handleIOCompletion(pcb);
             }

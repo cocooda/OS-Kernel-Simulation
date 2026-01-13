@@ -1,5 +1,7 @@
 package Kernel;
 import Process.PCB;
+import Process.ProcessState;
+
 import java.util.concurrent.BlockingQueue;
 
 public interface KernelAPI {
@@ -15,4 +17,8 @@ public interface KernelAPI {
 
     // Scheduler-facing queue (optional but useful)
     BlockingQueue<PCB> getReadyQueue();
+
+    // Scheduling event hook for accounting and priority adjustments
+    void onSchedulingEvent(PCB pcb, ProcessState state);
+
 }
