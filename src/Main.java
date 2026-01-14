@@ -1,6 +1,13 @@
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import Execution.CPUEx;
+import Execution.IOEx;
 import Kernel.Kernel;
+import Kernel.KernelAPI;
 import Process.PCB;
 import Process.ProcessContext;
+import Process.ProcessState;
 import Program.ProgramCode;
 
 public class Main {
@@ -72,8 +79,81 @@ public class Main {
     }
 }
 
+public static void playgroundCPUAndIOThreadsOnly() {
+    try {
+        // 1. Queues connecting CPU and IO
+        BlockingQueue<PCB> cpuQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<PCB> ioQueue  = new LinkedBlockingQueue<>();
+
+        // 2. Minimal kernel adapter (NO scheduler)
+        KernelAPI kernelStub = new KernelAPI() {
+
+            @Override
+            public void handleBlocked(PCB pcb) {
+                try {
+                    pcb.state = ProcessState.BLOCKED;
+                    ioQueue.put(pcb);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            @Override
+            public void handleIOCompletion(PCB pcb) throws InterruptedException {
+                pcb.state = ProcessState.READY;
+                cpuQueue.put(pcb);
+            }
+
+            @Override
+            public void handleTermination(PCB pcb) {
+                pcb.state = ProcessState.TERMINATED;
+                System.out.println("[KernelStub] PID " + pcb.pid + " TERMINATED");
+            }
+
+            @Override
+            public BlockingQueue<PCB> getReadyQueue() {
+                return cpuQueue;
+            }
+
+            @Override
+            public void onSchedulingEvent(PCB pcb, ProcessState state) {
+                pcb.state = state;
+            }
+        };
+
+        // 3. Start real CPU and IO modules
+        Thread cpuThread = new Thread(new CPUEx(cpuQueue, kernelStub), "CPUEx");
+        Thread ioThread  = new Thread(new IOEx(ioQueue, kernelStub), "IOEx");
+
+        System.out.println("Starting CPU and IO modules");
+
+        cpuThread.start();
+        ioThread.start();
+
+        // 4. Load real script → real instructions
+        PCB pcb = createProcessByFile("src/script_re2.txt");
+        pcb.state = ProcessState.READY;
+
+        // 5. Kick execution by sending PCB to CPU
+        cpuQueue.put(pcb);
+
+        // Let it run for a short demo window
+        Thread.sleep(3000);
+
+        cpuThread.interrupt();
+        ioThread.interrupt();
+
+        cpuThread.join();
+        ioThread.join();
+
+        System.out.println("CPU + IO module simulation ended");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
 
     public static void main(String[] args) {
-        playgroundWith2Processes();
+        playgroundCPUAndIOThreadsOnly();
     }
 }
