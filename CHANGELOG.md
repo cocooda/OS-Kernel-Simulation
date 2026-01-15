@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+- Execution: added switch-ack subclasses and hooks to log thread handoff and ReAck for the CPU/IO playground.
+- Kernel: READY_SUSPENDED activation now occurs whenever RAM has space; reclaimed memory only when needed.
+- Main: guard against null PCBs on admit to avoid NPE when a script fails to load.
+
+## 2026-01-15
+- Execution: added `CPUExSwitchAck`/`IOExSwitchAck` subclasses and `SwitchAckTracker` to log SwitchAck/CheckSwitch/ReAck in the 2-thread playground.
+- Execution: added `onThreadActive` hook to log when CPU/IO threads actually begin work after a handoff.
+- Kernel: fixed READY_SUSPENDED activation so queued processes resume when RAM frees up.
+- Main: added null-check guard for process admission to avoid NPE on failed script load.
 - Instruction: refactored to `Value`-based operands/results; added assignment (`name = expr`), `parse`, `sum`, and `print(expr)`; added `value[n]` token addressing; `write(...)` can emit current `result`.
 - ProcessContext: now stores `Value` fields and a variable map for runtime assignment/lookup.
 - ProgramCode: added `fromScript(...)` to compile `script.txt` line-by-line (skipping blanks and `#` comments).

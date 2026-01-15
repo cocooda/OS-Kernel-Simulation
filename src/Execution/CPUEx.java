@@ -28,6 +28,7 @@ public class CPUEx implements Runnable {
         try {
             while (true) {
                 PCB pcb = cpuQueue.take(); // RUNNING assigned by kernel
+                onThreadActive(pcb);
 
                 long sliceStart = System.nanoTime();
                 boolean preempted = false;
@@ -61,6 +62,7 @@ public class CPUEx implements Runnable {
                         // I/O request → kernel decides BLOCKED vs BLOCKED_SUSPENDED
                         System.out.println("[CPU] PID " + pcb.pid +
                             " BLOCKED dues to I/O calling for " + instr.type);
+                        onSwitchToIO(pcb, instr.type);
                         kernel.handleBlocked(pcb);
                         break;
                     }
@@ -81,5 +83,13 @@ public class CPUEx implements Runnable {
 
     private static int mapToOSTime(long ns) {
         return Math.max(1, (int) (ns / TIME_UNIT_NS));
+    }
+
+    protected void onSwitchToIO(PCB pcb, InstructionType type) {
+        // Hook for subclasses to acknowledge CPU -> IO thread switch.
+    }
+
+    protected void onThreadActive(PCB pcb) {
+        // Hook for subclasses to note when CPU thread begins work on a PCB.
     }
 }
