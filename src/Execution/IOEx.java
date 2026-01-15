@@ -4,7 +4,6 @@ import Instruction.Instruction;
 import Kernel.*;
 import Process.PCB;
 import Process.ProcessState;
-
 import java.util.concurrent.BlockingQueue;
 
 public class IOEx implements Runnable {
@@ -26,6 +25,7 @@ public class IOEx implements Runnable {
         try {
             while (true) {
                 PCB pcb = ioQueue.take();
+                onThreadActive(pcb);
 
                 Instruction instr = pcb.program.getInstruction(pcb.pc);
                 System.out.println("[IO] PID " + pcb.pid +
@@ -42,6 +42,7 @@ public class IOEx implements Runnable {
 
                 pcb.pc++;
 
+                onSwitchToCPU(pcb);
                 kernel.handleIOCompletion(pcb);
             }
         } catch (InterruptedException e) {
@@ -53,5 +54,13 @@ public class IOEx implements Runnable {
 
     private static int mapToOSTime(long ns) {
         return Math.max(1, (int) (ns / TIME_UNIT_NS));
+    }
+
+    protected void onSwitchToCPU(PCB pcb) {
+        // Hook for subclasses to acknowledge IO -> CPU thread switch.
+    }
+
+    protected void onThreadActive(PCB pcb) {
+        // Hook for subclasses to note when IO thread begins work on a PCB.
     }
 }

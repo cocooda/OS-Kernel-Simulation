@@ -1,14 +1,15 @@
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
-import Execution.CPUEx;
-import Execution.IOEx;
+import Execution.CPUExSwitchAck;
+import Execution.IOExSwitchAck;
+import Execution.SwitchAckTracker;
 import Kernel.Kernel;
 import Kernel.KernelAPI;
 import Process.PCB;
 import Process.ProcessContext;
 import Process.ProcessState;
 import Program.ProgramCode;
+import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Main {
  
@@ -24,7 +25,7 @@ public class Main {
         }
     };  
 
-    public static void playgroundWith2Processes() {
+    public static void playgroundWith2Processes(String enablePrior) {
         try {
             
             Kernel kernel = new Kernel();
@@ -32,6 +33,9 @@ public class Main {
             PCB pcb2 = createProcessByFile("src/script.txt");
             // activate the priority scheduling
             boolean enable = true;
+            if (enablePrior.equals("N")) {
+                enable = false;
+            }
             kernel.enablePriorityScheduling(enable);
             kernel.admitProcess(pcb);
             kernel.admitProcess(pcb2);
@@ -49,7 +53,7 @@ public class Main {
        
     };
 
-    public static void playgroundWith3Processes() {
+    public static void playgroundWith3Processes(String enablePrior) {
     try {
         Kernel kernel = new Kernel();
 
@@ -57,18 +61,23 @@ public class Main {
         PCB pcb1 = createProcessByFile("src/script.txt");
         PCB pcb2 = createProcessByFile("src/script2.txt");
         PCB pcb3 = createProcessByFile("src/script3.txt");
-
+        PCB pcb4 = createProcessByFile("src/script3.txt");
         // Enable priority scheduling
-        kernel.enablePriorityScheduling(true);
+        boolean enable = true;
+        if (enablePrior.equals("N")) {
+            enable = false;
+        } 
+        kernel.enablePriorityScheduling(enable);
 
         // Admit processes to the kernel
         kernel.admitProcess(pcb1);
         kernel.admitProcess(pcb2);
         kernel.admitProcess(pcb3);
-
+        kernel.admitProcess(pcb4);
+  
         // Start kernel (scheduler + CPU + IO threads)
         Thread kernelThread = new Thread(kernel::start, "Kernel");
-        System.out.println("Start the Simulation (3 Processes)");
+        System.out.println("Start the Simulation (4  Processes)");
 
         kernelThread.start();
         kernelThread.join();
@@ -79,7 +88,7 @@ public class Main {
     }
 }
 
-public static void playgroundCPUAndIOThreadsOnly() {
+    public static void playgroundCPUAndIOThreadsOnly() {
     try {
         // 1. Queues connecting CPU and IO
         BlockingQueue<PCB> cpuQueue = new LinkedBlockingQueue<>();
@@ -122,13 +131,24 @@ public static void playgroundCPUAndIOThreadsOnly() {
         };
 
         // 3. Start real CPU and IO modules
-        Thread cpuThread = new Thread(new CPUEx(cpuQueue, kernelStub), "CPUEx");
-        Thread ioThread  = new Thread(new IOEx(ioQueue, kernelStub), "IOEx");
+        System.out.println("Initializing 2 thread the IO-Thead & CPU-Thread");
+        Thread cpuThread = new Thread(new CPUExSwitchAck(cpuQueue, kernelStub), "CPUEx");
+        Thread ioThread  = new Thread(new IOExSwitchAck(ioQueue, kernelStub), "IOEx");
 
-        System.out.println("Starting CPU and IO modules");
+        try {
+            cpuThread.start();
+            System.out.println("Start the cpuThread successfully");
+        } catch (Exception e) {
+            System.out.println("Start the cpuThread fail");
+        }
+        try {
+            ioThread.start();
+            System.out.println("Start the IOThread successfully");
+        } catch (Exception e) {
+            System.out.println("Start the IOThread fail");
+        }
 
-        cpuThread.start();
-        ioThread.start();
+        System.out.println("Current thread is running " + Thread.currentThread().getName());
 
         // 4. Load real script → real instructions
         PCB pcb = createProcessByFile("src/script_re2.txt");
@@ -147,6 +167,7 @@ public static void playgroundCPUAndIOThreadsOnly() {
         ioThread.join();
 
         System.out.println("CPU + IO module simulation ended");
+        SwitchAckTracker.recordAndReack(Thread.currentThread());
 
     } catch (Exception e) {
         e.printStackTrace();
@@ -154,6 +175,39 @@ public static void playgroundCPUAndIOThreadsOnly() {
 }
 
     public static void main(String[] args) {
-        playgroundCPUAndIOThreadsOnly();
+        try {
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("=================================");
+            System.out.println(" OS Kernel Simulation Playground ");
+            System.out.println("=================================");
+            System.out.println("1. Run CPU + IO Threads Only");
+            System.out.println("2. Run Kernel with 2 Processes");
+            System.out.println("3. Run Kernel with 4 Processes");
+            System.out.print("Choose an option (1–3): ");
+            int choice = scanner.nextInt();
+            System.out.println("Do you want to use priority-based scheduling - enter Y or N");
+            String choiceStr = scanner.next();
+            switch (choice) {
+                case 1:
+                    playgroundCPUAndIOThreadsOnly();
+                    break;
+
+                case 2:
+                    playgroundWith2Processes(choiceStr.toUpperCase());
+                    break;
+
+                case 3:
+                    playgroundWith3Processes(choiceStr.toUpperCase());
+                    break;
+
+                default:
+                    System.out.println("Invalid option. Exiting.");
+                }
+            scanner.close();
+            System.out.println("\nSimmulation Finished");
+        } catch (Exception e) {
+        }
+        
+       
     }
 }

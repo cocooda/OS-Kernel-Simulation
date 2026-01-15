@@ -86,11 +86,11 @@ public class Kernel implements KernelAPI {
 
         try {
             while (this.running) {
-                // (1) Activate suspended processes if RAM frees up
-                if (!readySuspendedQueue.isEmpty() && !ramHasSpace()) {
-                    // make room IF we need to
-                    reclaimMemoryIfNeeded();
-
+                // (1) Activate suspended processes if RAM has space; otherwise try to reclaim.
+                if (!readySuspendedQueue.isEmpty()) {
+                    if (!ramHasSpace()) {
+                        reclaimMemoryIfNeeded();
+                    }
                     if (!readySuspendedQueue.isEmpty() && ramHasSpace()) {
                         PCB pcb = readySuspendedQueue.remove(0);
                         pcb.state = ProcessState.READY;
@@ -114,6 +114,8 @@ public class Kernel implements KernelAPI {
                 if (priorityScheduling) {
                     PCB victim = findLowerPriorityVictim(next.priority);
                     if (victim != null) {
+                        System.out.println("[KERNEL] Preempt candidate PID " + victim.pid
+                                + " on " + Thread.currentThread());
                         readyQueue.remove(victim);
                         victim.state = ProcessState.READY_SUSPENDED;
                         readySuspendedQueue.add(victim);
